@@ -252,6 +252,17 @@ has users_password_column => (
     default => 'password',
 );
 
+=head2 pw_rest_code_column
+
+Defaults to pw_reset_code
+
+=cut
+
+has users_pw_reset_code_column => (
+  is => 'ro',
+  default => 'pw_reset_code',
+);
+
 =head2 roles_table
 
 Defaults to 'roles'.
@@ -375,7 +386,9 @@ sub get_user_details {
       unless defined $username;
 
     # Get our database handle and find out the table and column names:
-    my $database = $self->database;
+    #my $database = $self->database;
+
+    my $database = $self->plugin_database($self->db_connection_name);
 
     # Look up the user, 
     my $user = $database->quick_select(
@@ -389,6 +402,34 @@ sub get_user_details {
     }
 }
 
+=Head2 get_user_by_code
+
+Used when reseting user passwords
+
+=cut
+
+sub get_user_by_code {
+    my ($self, $code) = @_;
+    croak "code must be defined"
+      unless defined $code;
+
+    # Get our database handle and find out the table and column names:
+    #my $database = $self->database;
+
+    my $database = $self->plugin_database($self->db_connection_name);
+
+    # Look up the user, 
+    my $user = $database->quick_select(
+        $self->users_table, { $self->users_pw_reset_code_column => $code }
+    );
+    if (!$user) {
+        $self->plugin->app->log("debug", "No such user for code $code");
+        return;
+    } else {
+        return $user->{username};
+    }
+}
+
 =head2 get_user_roles $username
 
 =cut
@@ -396,7 +437,9 @@ sub get_user_details {
 sub get_user_roles {
     my ($self, $username) = @_;
 
-    my $database = $self->database;
+    #my $database = $self->database;
+
+    my $database = $self->plugin_database($self->db_connection_name);
 
     # Get details of the user first; both to check they exist, and so we have
     # their ID to use.
